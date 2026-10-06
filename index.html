@@ -45,6 +45,10 @@ main{max-width:1500px;display:grid;grid-template-columns:400px 1fr;grid-template
 body{font-size:18px}h1{font-size:36px}h2{font-size:21px}.q{font-size:22px}
 #board{max-height:calc(100vh - 190px)}
 }
+.stage{position:relative;overflow:hidden;border-radius:6px;background:#d9c7a0}
+.stage::before,.stage::after{content:"";position:absolute;inset:-24px;background:url(map.jpg) center/cover no-repeat}
+.stage::after{filter:blur(7px);-webkit-mask-image:radial-gradient(ellipse 45% 50% at 50% 50%,#000 40%,transparent 100%);mask-image:radial-gradient(ellipse 45% 50% at 50% 50%,#000 40%,transparent 100%)}
+.stage svg{position:relative;z-index:1;display:block}
 </style>
 </head>
 <body>
@@ -69,7 +73,7 @@ body{font-size:18px}h1{font-size:36px}h2{font-size:21px}.q{font-size:22px}
 
 <section style="grid-area:board">
 <h2>2. Нажмите гекс с этим числом</h2>
-<svg id="board" viewBox="-30 -24 500 448" width="100%" role="img" aria-label="Игровое поле из 19 гексов" style="font-family:inherit"></svg>
+<div class="stage"><svg id="board" viewBox="-30 -24 500 448" width="100%" role="img" aria-label="Игровое поле из 19 гексов" style="font-family:inherit"></svg></div>
 <div id="legend"></div>
 </section>
 
@@ -163,7 +167,7 @@ function imgErr(i){var h=i.getAttribute("href");if(/\.jpg$/.test(h))i.setAttribu
 var ROWS=[3,4,5,4,3],LAY="HWS"+"SGHW"+"SGDBW"+"GBHS"+"WGB",NUMS=[9,4,8,6,11,5,3,10,3,9,4,8,5,10,6,11,2,12];
 var board=document.getElementById("board"),cells=[];
 (function(){
-var w=62,R=w/Math.sqrt(3),idx=0,ni=0,h='<image href="map.jpg" x="-30" y="-24" width="500" height="448" preserveAspectRatio="xMidYMid slice" onerror="imgErr(this)"/>'+ring();
+var w=62,R=w/Math.sqrt(3),idx=0,ni=0,h=ring();
 var cp=[];for(var q=0;q<6;q++){var g0=Math.PI/180*(60*q-30);cp.push((R*.97*Math.cos(g0)).toFixed(1)+","+(R*.97*Math.sin(g0)).toFixed(1))}
 h='<defs><clipPath id="hexclip"><polygon points="'+cp.join(" ")+'"/></clipPath></defs>'+h;
 ROWS.forEach(function(n,r){for(var i=0;i<n;i++){
