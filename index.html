@@ -40,6 +40,11 @@ button.on{background:var(--indigo);color:var(--paper)}
 .lg{display:inline-flex;align-items:center;gap:5px;font-size:13px;margin:6px 10px 0 0}
 .lg i{width:12px;height:12px;border-radius:2px;display:inline-block}
 header{position:relative}#mus{position:absolute;right:12px;top:14px;min-height:36px;padding:6px 10px;background:transparent;color:var(--paper);border-color:var(--paper)}
+@media (min-width:1000px){
+main{max-width:1500px;display:grid;grid-template-columns:400px 1fr;grid-template-areas:"modes board" "num board" "card board" "stats board";grid-template-rows:auto auto auto 1fr;column-gap:20px;padding:20px}
+body{font-size:18px}h1{font-size:36px}h2{font-size:21px}.q{font-size:22px}
+#board{max-height:calc(100vh - 190px)}
+}
 </style>
 </head>
 <body>
@@ -50,27 +55,27 @@ header{position:relative}#mus{position:absolute;right:12px;top:14px;min-height:3
 <audio id="aud" src="music.mp3" loop preload="none"></audio>
 </header>
 <main>
-<section>
+<section style="grid-area:modes">
 <h2>Режим вопросов (для учителя)</h2>
 <div class="hexes" id="modes" style="grid-template-columns:1fr"></div>
 </section>
 
-<section>
+<section style="grid-area:num">
 <h2>1. Какое число выпало?</h2>
 <div class="nums" id="nums"></div>
 <button class="roll" id="roll">Бросить два кубика на экране</button>
 <div class="dice" id="dice" aria-live="polite"></div>
 </section>
 
-<section>
+<section style="grid-area:board">
 <h2>2. Нажмите гекс с этим числом</h2>
-<svg id="board" viewBox="0 0 380 200" width="100%" role="img" aria-label="Игровое поле из 19 гексов" style="font-family:inherit"></svg>
+<svg id="board" viewBox="0 0 440 400" width="100%" role="img" aria-label="Игровое поле из 19 гексов" style="font-family:inherit"></svg>
 <div id="legend"></div>
 </section>
 
-<section id="card" class="hide" aria-live="polite"></section>
+<section id="card" class="hide" style="grid-area:card" aria-live="polite"></section>
 
-<section>
+<section style="grid-area:stats">
 <h2>Итоги партии</h2>
 <div class="stat"><span>Вопросов задано</span><b id="sAsked">0</b></div>
 <div class="stat"><span>Верных ответов</span><b id="sRight">0</b></div>
@@ -142,22 +147,33 @@ var a=1+Math.floor(Math.random()*6),b=1+Math.floor(Math.random()*6);
 diceEl.textContent=a+" + "+b+" = "+(a+b);setNum(a+b,true)};
 
 var T={H:["horse","#8E5B2E"],W:["willow","#2E7D4F"],S:["sheep","#9CC25A"],G:["wheat","#E3B93C"],B:["brick","#C0562F"],D:[null,"#D9CBA3"]};
+function ring(){
+var CX=220,CY=200,RI=172,RO=212,NB=[["Сібір","#5E7F6B","siberia"],["Жоңғар","#7B5E91","dzungar"],["Цин","#B23A3A","qing"],["Бұхара","#2F5D8A","bukhara"],["Хиуа","#A8793A","khiva"],["Ноғай","#8A6D4B","nogai"]],WM=[2,3,4,5,0,1],o="";
+function P(r,k){var g=Math.PI/3*k;return[CX+r*Math.cos(g),CY+r*Math.sin(g)]}
+for(var k=0;k<6;k++){
+var p=[P(RI,k),P(RI,k+1),P(RO,k+1),P(RO,k)],nb=NB[WM[k]];
+var xs=p.map(function(q){return q[0]}),ys=p.map(function(q){return q[1]});
+var x0=Math.min.apply(null,xs),y0=Math.min.apply(null,ys),x1=Math.max.apply(null,xs),y1=Math.max.apply(null,ys);
+var pts=p.map(function(q){return q[0].toFixed(1)+","+q[1].toFixed(1)}).join(" ");
+var cx=(xs[0]+xs[1]+xs[2]+xs[3])/4,cy=(ys[0]+ys[1]+ys[2]+ys[3])/4;
+o+='<defs><clipPath id="wd'+k+'"><polygon points="'+pts+'"/></clipPath></defs><polygon points="'+pts+'" fill="'+nb[1]+'"/><image href="'+nb[2]+'.jpg" x="'+x0.toFixed(1)+'" y="'+y0.toFixed(1)+'" width="'+(x1-x0).toFixed(1)+'" height="'+(y1-y0).toFixed(1)+'" preserveAspectRatio="xMidYMid slice" clip-path="url(#wd'+k+')" onerror="imgErr(this)"/><polygon points="'+pts+'" fill="none" stroke="#fbf4e2" stroke-width="2"/><text x="'+cx.toFixed(1)+'" y="'+cy.toFixed(1)+'" text-anchor="middle" dominant-baseline="central" font-size="14" font-weight="700" fill="#fff" stroke="#1d1408" stroke-width="3" paint-order="stroke" style="pointer-events:none">'+nb[0]+'</text>'}
+return o}
 var IMG={H:"horse",W:"willow",S:"sheep",G:"wheat",B:"brick",D:"desert"};
 function imgErr(i){var h=i.getAttribute("href");if(/\.jpg$/.test(h))i.setAttribute("href",h.replace(".jpg",".png"));else i.remove()}
-var ROWS=[6,7,6],LAY="WHSHSW"+"GWBDGSB"+"GHBWGS",NUMS=[9,4,11,8,3,10,6,5,10,11,8,3,4,12,6,9,2,5];
+var ROWS=[3,4,5,4,3],LAY="HWS"+"SGHW"+"SGDBW"+"GBHS"+"WGB",NUMS=[9,4,8,6,11,5,3,10,3,9,4,8,5,10,6,11,2,12];
 var board=document.getElementById("board"),cells=[];
 (function(){
-var w=44,R=w/Math.sqrt(3),idx=0,ni=0,h='<text x="190" y="20" text-anchor="middle" font-size="12" fill="#23305E">Сібір хандығы</text><text x="190" y="190" text-anchor="middle" font-size="12" fill="#23305E">Бұхара · Хиуа</text><text x="6" y="66" font-size="12" fill="#23305E">Ноғай</text><text x="374" y="142" text-anchor="end" font-size="12" fill="#23305E">Цин</text>';
+var w=62,R=w/Math.sqrt(3),idx=0,ni=0,h=ring();
 var cp=[];for(var q=0;q<6;q++){var g0=Math.PI/180*(60*q-30);cp.push((R*.97*Math.cos(g0)).toFixed(1)+","+(R*.97*Math.sin(g0)).toFixed(1))}
 h='<defs><clipPath id="hexclip"><polygon points="'+cp.join(" ")+'"/></clipPath></defs>'+h;
 ROWS.forEach(function(n,r){for(var i=0;i<n;i++){
-var x=190+(i-(n-1)/2)*w,y=62+r*1.5*R,t=LAY[idx],tok=t==="D"?null:NUMS[ni++],pts=[];
+var x=220+(i-(n-1)/2)*w,y=92.6+r*1.5*R,t=LAY[idx],tok=t==="D"?null:NUMS[ni++],pts=[];
 for(var a=0;a<6;a++){var g=Math.PI/180*(60*a-30);pts.push((x+R*Math.cos(g)).toFixed(1)+","+(y+R*Math.sin(g)).toFixed(1))}
 cells.push({t:t,n:tok});
 var nm=t==="D"?"Бетпақ-Дала":HEX[T[t][0]].n;
-h+='<g class="hx" data-i="'+idx+'" tabindex="0" role="button" aria-label="'+nm+(tok?", число "+tok:"")+'"><polygon points="'+pts.join(" ")+'" fill="'+T[t][1]+'" stroke="#fbf4e2" stroke-width="2"/><g transform="translate('+x+','+y+')"><image href="'+IMG[t]+'.jpg" x="-27.8" y="-27.8" width="55.6" height="55.6" clip-path="url(#hexclip)" onerror="imgErr(this)"/></g><polygon class="ring" points="'+pts.join(" ")+'" fill="none"/>';
-if(tok)h+='<circle cx="'+x+'" cy="'+y+'" r="11" fill="#fbf4e2"/><text x="'+x+'" y="'+y+'" text-anchor="middle" dominant-baseline="central" font-size="13" font-weight="700" fill="'+(tok===6||tok===8?"#A32D2D":"#2A2118")+'">'+tok+'</text>';
-else h+='<circle cx="'+x+'" cy="'+y+'" r="9" fill="#2A2118"/><text x="'+x+'" y="'+y+'" text-anchor="middle" dominant-baseline="central" font-size="11" fill="#fff">Б</text>';
+h+='<g class="hx" data-i="'+idx+'" tabindex="0" role="button" aria-label="'+nm+(tok?", число "+tok:"")+'"><polygon points="'+pts.join(" ")+'" fill="'+T[t][1]+'" stroke="#fbf4e2" stroke-width="2"/><g transform="translate('+x+','+y+')"><image href="'+IMG[t]+'.jpg" x="-39.2" y="-39.2" width="78.4" height="78.4" clip-path="url(#hexclip)" onerror="imgErr(this)"/></g><polygon class="ring" points="'+pts.join(" ")+'" fill="none"/>';
+if(tok)h+='<circle cx="'+x+'" cy="'+y+'" r="14" fill="#fbf4e2"/><text x="'+x+'" y="'+y+'" text-anchor="middle" dominant-baseline="central" font-size="17" font-weight="700" fill="'+(tok===6||tok===8?"#A32D2D":"#2A2118")+'">'+tok+'</text>';
+else h+='<circle cx="'+x+'" cy="'+y+'" r="12" fill="#2A2118"/><text x="'+x+'" y="'+y+'" text-anchor="middle" dominant-baseline="central" font-size="14" fill="#fff">Б</text>';
 h+='</g>';idx++}});
 board.innerHTML=h;
 var lg="";for(var k in T){lg+='<span class="lg"><i style="background:'+T[k][1]+'"></i>'+(T[k][0]?HEX[T[k][0]].n+" — "+HEX[T[k][0]].r:"Бетпақ-Дала (пустыня)")+'</span>'}
