@@ -35,12 +35,19 @@ button.on{background:var(--indigo);color:var(--paper)}
 .stat{display:flex;justify-content:space-between;font-size:14px}
 .hide{display:none}
 .dice{font:700 22px Georgia,serif;text-align:center;margin-top:8px;min-height:30px}
+.hx{cursor:pointer}.hx.dim{opacity:.3}.hx.hit .ring{stroke:#23305E;stroke-width:4}
+.hx:focus-visible .ring{stroke:#C48A2C;stroke-width:4}.hx:focus{outline:none}
+.lg{display:inline-flex;align-items:center;gap:5px;font-size:13px;margin:6px 10px 0 0}
+.lg i{width:12px;height:12px;border-radius:2px;display:inline-block}
+header{position:relative}#mus{position:absolute;right:12px;top:14px;min-height:36px;padding:6px 10px;background:transparent;color:var(--paper);border-color:var(--paper)}
 </style>
 </head>
 <body>
 <header>
 <h1>Цифровой летописец</h1>
 <p>Ұлы Дала · помощник игры. Прототип (бета)</p>
+<button id="mus">Музыка: вкл</button>
+<audio id="aud" src="music.mp3" loop preload="none"></audio>
 </header>
 <main>
 <section>
@@ -55,10 +62,10 @@ button.on{background:var(--indigo);color:var(--paper)}
 <div class="dice" id="dice" aria-live="polite"></div>
 </section>
 
-<section id="hexSec" class="hide">
-<h2>2. Какой гекс принёс ресурс?</h2>
-<div class="hexes" id="hexes"></div>
-<button class="go" id="ask" disabled style="margin-top:10px">Задать вопрос</button>
+<section>
+<h2>2. Нажмите гекс с этим числом</h2>
+<svg id="board" viewBox="0 0 380 200" width="100%" role="img" aria-label="Игровое поле из 19 гексов" style="font-family:inherit"></svg>
+<div id="legend"></div>
 </section>
 
 <section id="card" class="hide" aria-live="polite"></section>
@@ -112,10 +119,8 @@ var EV=[
 ["Құрылтай","Старейшины собрались решать общие дела. Верните Барымташы на пустыню Бетпақ-Дала и обсудите, кому нужна помощь."]
 ];
 var num=null,hex=null,asked=0,right=0,bonus=0,used={};
-var numsEl=document.getElementById("nums"),hexesEl=document.getElementById("hexes"),
-askEl=document.getElementById("ask"),card=document.getElementById("card"),diceEl=document.getElementById("dice");
+var numsEl=document.getElementById("nums"),card=document.getElementById("card"),diceEl=document.getElementById("dice");
 for(var i=2;i<=12;i++){(function(v){var b=document.createElement("button");b.textContent=v;b.onclick=function(){setNum(v)};numsEl.appendChild(b)})(i)}
-for(var k in HEX){(function(key){var b=document.createElement("button");b.innerHTML=HEX[key].n+"<small>"+HEX[key].r+"</small>";b.dataset.k=key;b.onclick=function(){setHex(key)};hexesEl.appendChild(b)})(k)}
 function mark(box,fn){[].forEach.call(box.children,function(c){c.classList.toggle("on",fn(c))})}
 var mode="all";
 var MODES=[["off","Без вопросов","Только числа и события"],["68","Только 6 и 8","Вопрос на самых частых числах"],["all","Каждый бросок","Вопрос на любое число"]];
@@ -124,24 +129,55 @@ MODES.forEach(function(m){var b=document.createElement("button");b.innerHTML=m[1
 mark(modesEl,function(c){return c.dataset.k===mode});
 function needQ(){return num&&num!==7&&(mode==="all"||(mode==="68"&&(num===6||num===8)))}
 function refresh(){
-var hs=document.getElementById("hexSec");
-if(num===7){showEvent();hs.classList.add("hide")}
-else if(!num){hs.classList.add("hide")}
-else if(needQ()){hs.classList.remove("hide");card.classList.add("hide")}
-else{hs.classList.add("hide");card.className="";card.innerHTML="<p>Число "+num+": вопроса нет в этом режиме. Ресурсы выдаются по обычным правилам.</p>"}
-upd()}
+if(num===7)showEvent();
+else if(!num)card.className="hide";
+else if(needQ()){card.className="";card.innerHTML="<p>Число "+num+": нажмите на подсвеченный гекс, чтобы получить вопрос.</p>"}
+else{card.className="";card.innerHTML="<p>Число "+num+": вопроса нет в этом режиме. Ресурсы выдаются по обычным правилам.</p>"}
+paint()}
 function setNum(v,keep){num=v;mark(numsEl,function(c){return c.textContent==v});
 if(!keep)diceEl.textContent="";
 refresh()}
-function setHex(k){hex=k;mark(hexesEl,function(c){return c.dataset.k===k});upd()}
-function upd(){askEl.disabled=!(num&&num!==7&&hex)}
 document.getElementById("roll").onclick=function(){
 var a=1+Math.floor(Math.random()*6),b=1+Math.floor(Math.random()*6);
 diceEl.textContent=a+" + "+b+" = "+(a+b);setNum(a+b,true)};
+
+var T={H:["horse","#8E5B2E"],W:["willow","#2E7D4F"],S:["sheep","#9CC25A"],G:["wheat","#E3B93C"],B:["brick","#C0562F"],D:[null,"#D9CBA3"]};
+var IMG={H:"horse",W:"willow",S:"sheep",G:"wheat",B:"brick",D:"desert"};
+function imgErr(i){var h=i.getAttribute("href");if(/\.jpg$/.test(h))i.setAttribute("href",h.replace(".jpg",".png"));else i.remove()}
+var ROWS=[6,7,6],LAY="WHSHSW"+"GWBDGSB"+"GHBWGS",NUMS=[9,4,11,8,3,10,6,5,10,11,8,3,4,12,6,9,2,5];
+var board=document.getElementById("board"),cells=[];
+(function(){
+var w=44,R=w/Math.sqrt(3),idx=0,ni=0,h='<text x="190" y="20" text-anchor="middle" font-size="12" fill="#23305E">Сібір хандығы</text><text x="190" y="190" text-anchor="middle" font-size="12" fill="#23305E">Бұхара · Хиуа</text><text x="6" y="66" font-size="12" fill="#23305E">Ноғай</text><text x="374" y="142" text-anchor="end" font-size="12" fill="#23305E">Цин</text>';
+var cp=[];for(var q=0;q<6;q++){var g0=Math.PI/180*(60*q-30);cp.push((R*.97*Math.cos(g0)).toFixed(1)+","+(R*.97*Math.sin(g0)).toFixed(1))}
+h='<defs><clipPath id="hexclip"><polygon points="'+cp.join(" ")+'"/></clipPath></defs>'+h;
+ROWS.forEach(function(n,r){for(var i=0;i<n;i++){
+var x=190+(i-(n-1)/2)*w,y=62+r*1.5*R,t=LAY[idx],tok=t==="D"?null:NUMS[ni++],pts=[];
+for(var a=0;a<6;a++){var g=Math.PI/180*(60*a-30);pts.push((x+R*Math.cos(g)).toFixed(1)+","+(y+R*Math.sin(g)).toFixed(1))}
+cells.push({t:t,n:tok});
+var nm=t==="D"?"Бетпақ-Дала":HEX[T[t][0]].n;
+h+='<g class="hx" data-i="'+idx+'" tabindex="0" role="button" aria-label="'+nm+(tok?", число "+tok:"")+'"><polygon points="'+pts.join(" ")+'" fill="'+T[t][1]+'" stroke="#fbf4e2" stroke-width="2"/><g transform="translate('+x+','+y+')"><image href="'+IMG[t]+'.jpg" x="-27.8" y="-27.8" width="55.6" height="55.6" clip-path="url(#hexclip)" onerror="imgErr(this)"/></g><polygon class="ring" points="'+pts.join(" ")+'" fill="none"/>';
+if(tok)h+='<circle cx="'+x+'" cy="'+y+'" r="11" fill="#fbf4e2"/><text x="'+x+'" y="'+y+'" text-anchor="middle" dominant-baseline="central" font-size="13" font-weight="700" fill="'+(tok===6||tok===8?"#A32D2D":"#2A2118")+'">'+tok+'</text>';
+else h+='<circle cx="'+x+'" cy="'+y+'" r="9" fill="#2A2118"/><text x="'+x+'" y="'+y+'" text-anchor="middle" dominant-baseline="central" font-size="11" fill="#fff">Б</text>';
+h+='</g>';idx++}});
+board.innerHTML=h;
+var lg="";for(var k in T){lg+='<span class="lg"><i style="background:'+T[k][1]+'"></i>'+(T[k][0]?HEX[T[k][0]].n+" — "+HEX[T[k][0]].r:"Бетпақ-Дала (пустыня)")+'</span>'}
+document.getElementById("legend").innerHTML=lg})();
+function paint(){[].forEach.call(board.querySelectorAll(".hx"),function(g){var c=cells[+g.dataset.i],hit=num&&num!==7&&c.n===num;
+g.classList.toggle("hit",!!hit);g.classList.toggle("dim",!!num&&num!==7&&!hit)})}
+function hexClick(i){var c=cells[i];
+if(!num||num===7)return;
+if(c.n!==num){card.className="";card.innerHTML="<p>На этом гексе число "+(c.n||"нет")+", а выпало "+num+". Выберите подсвеченный гекс.</p>";return}
+if(!needQ()){card.className="";card.innerHTML="<p>Гекс «"+HEX[T[c.t][0]].n+"» приносит: "+HEX[T[c.t][0]].r+". Вопроса в этом режиме нет.</p>";return}
+askHex(T[c.t][0])}
+board.onclick=function(e){var g=e.target.closest(".hx");if(g)hexClick(+g.dataset.i)};
+board.onkeydown=function(e){if(e.key==="Enter"||e.key===" "){var g=e.target.closest(".hx");if(g){e.preventDefault();hexClick(+g.dataset.i)}}};
+var aud=document.getElementById("aud"),mus=document.getElementById("mus");
+mus.onclick=function(){if(aud.paused){aud.volume=.4;aud.play().then(function(){mus.textContent="Музыка: выкл"}).catch(function(){mus.textContent="Нет файла музыки"})}else{aud.pause();mus.textContent="Музыка: вкл"}};
+aud.onerror=function(){mus.textContent="Нет файла музыки"};
 function showEvent(){
 var e=EV[Math.floor(Math.random()*EV.length)];
 card.className="";card.innerHTML="<div class='event'><h2>Выпало 7: "+e[0]+"</h2><p>"+e[1]+"</p></div>"}
-askEl.onclick=function(){
+function askHex(key){hex=key;
 var deck=Q[hex];used[hex]=used[hex]||[];
 if(used[hex].length>=deck.length)used[hex]=[];
 var left=[];deck.forEach(function(q,i){if(used[hex].indexOf(i)<0)left.push(i)});
